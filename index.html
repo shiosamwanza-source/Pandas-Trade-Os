@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PANDAS Global Logistics | Trade OS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Space Grotesk', sans-serif; background-color: #050510; overflow-x: hidden; }
+        .aurora-bg {
+            background: radial-gradient(circle at 10% 10%, rgba(56, 189, 248, 0.15), transparent 40%),
+                        radial-gradient(circle at 90% 20%, rgba(168, 85, 247, 0.15), transparent 40%),
+                        radial-gradient(circle at 50% 90%, rgba(16, 185, 129, 0.1), transparent 40%);
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .glass-light {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .tactile-btn {
+            transition: all 0.1s ease;
+            box-shadow: 0 6px 0 0 rgba(0, 0, 0, 0.4), 0 8px 15px rgba(0,0,0,0.3);
+        }
+        .tactile-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 0 rgba(0, 0, 0, 0.4); }
+        @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.3); } 50% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.5); } }
+        .glow-effect { animation: pulse-glow 4s infinite; }
+        .category-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.4); }
+        .category-card { transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="aurora-bg text-white min-h-screen flex flex-col items-center p-4 sm:p-6">
+
+    <!-- Navbar -->
+    <nav class="glass fixed top-4 left-1/2 transform -translate-x-1/2 w-full max-w-6xl rounded-full px-6 py-3 flex justify-between items-center z-50">
+        <h1 class="text-xl font-bold tracking-tight">🐼 PANDAS</h1>
+        <div class="hidden md:flex space-x-6 text-sm text-gray-300">
+            <a href="#categories" class="hover:text-white transition">Maduka</a>
+            <a href="#b2b" class="hover:text-white transition">Wholesale</a>
+            <a href="#logistics" class="hover:text-white transition">Logistics</a>
+            <a href="#register" class="hover:text-white transition">Sajili Duka</a>
+        </div>
+        <button class="tactile-btn bg-white text-black text-sm font-bold py-2 px-4 rounded-full">Login</button>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="w-full max-w-5xl text-center mt-32 sm:mt-40 flex flex-col items-center">
+        <div class="glass rounded-full px-4 py-2 mb-6 text-sm text-blue-300 flex items-center space-x-2 glow-effect">
+            <span class="w-2 h-2 bg-blue-400 rounded-full animate-ping"></span>
+            <span id="ai-greeting">AI Trade Assistant: Online 24/7</span>
+        </div>
+        <h1 class="text-4xl sm:text-6xl md:text-7xl font-bold leading-tight mb-6 bg-gradient-to-r from-white to-gray-500 bg-clip-text text-transparent">
+            Biashara ya Kimataifa, <br> <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Sio Duka Tu.</span>
+        </h1>
+        <p class="text-gray-400 text-base sm:text-xl max-w-2xl mb-10">
+            PANDAS Global Logistics ni Digital Trade Infrastructure inayounganisha Viwanda vya China, Wafanyabiashara wa Afrika, na Logistics kupitia AI na Supply Chain Automation.
+        </p>
+        <div class="glass rounded-2xl p-2 w-full max-w-2xl mb-10 flex flex-col sm:flex-row items-center gap-2">
+            <input type="text" id="ai-search" placeholder="🤖 Mfano: Nahitaji power bank 20000mAh, MOQ 500..." class="bg-transparent flex-1 w-full px-4 py-3 text-white placeholder-gray-500 outline-none rounded-xl">
+            <button class="tactile-btn bg-blue-600 hover:bg-blue-500 w-full sm:w-auto text-white font-bold py-3 px-8 rounded-xl">Tafuta Supplier</button>
+        </div>
+    </header>
+
+    <!-- SECTION 1: Aina za Biashara (Marketplace Categories) -->
+    <section id="categories" class="w-full max-w-6xl mt-24">
+        <h2 class="text-3xl font-bold mb-2 text-center">Chagua Aina ya Biashara</h2>
+        <p class="text-gray-400 text-center mb-10">Maduka rasmi ya PANDAS na Marketplace ya Wafanyabiashara mbalimbali.</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- Cosmetics -->
+            <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
+                <div class="text-4xl mb-3">💄</div>
+                <h3 class="font-bold text-pink-300">PANDAS Cosmetics</h3>
+                <p class="text-gray-400 text-xs mt-2">Skincare, Makeup, Perfumes, Beauty Tools</p>
+            </div>
+            <!-- Electronics -->
+            <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
+                <div class="text-4xl mb-3">📱</div>
+                <h3 class="font-bold text-blue-300">PANDAS Electronics</h3>
+                <p class="text-gray-400 text-xs mt-2">Smartphones, Laptops, CCTV, Solar</p>
+            </div>
+            <!-- Auto Parts -->
+            <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
+                <div class="text-4xl mb-3">🚗</div>
+                <h3 class="font-bold text-orange-300">Auto Parts</h3>
+                <p class="text-gray-400 text-xs mt-2">Spares, Tires, Accessories, Engines</p>
+            </div>
+            <!-- Fashion -->
+            <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
+                <div class="text-4xl mb-3">👗</div>
+                <h3 class="font-bold text-purple-300">Fashion</h3>
+                <p class="text-gray-400 text-xs mt-2">Nguo, Viatu, Vifaa vya Mode</p>
+            </div>
+            <!-- Medical -->
+            <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
+                <div class="text-4xl mb-3">🩺</div>
+                <h3 class="font-bold text-green-300">Medical Supplies</h3>
+                <p class="text-gray-400 text-xs mt-2">Vifaa vya Hospitali, Dawa, PPE</p>
+            </div>
+            <!-- Agriculture -->
+            <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
+                <div class="text-4xl mb-3">🚜</div>
+                <h3 class="font-bold text-yellow-300">Agriculture</h3>
+                <p class="text-gray-400 text-xs mt-2">Mbolea, Vifaa vya Shamba, Irrigation</p>
+            </div>
+            <!-- Construction -->
+            <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
+                <div class="text-4xl mb-3">🧱</div>
+                <h3 class="font-bold text-red-300">Construction</h3>
+                <p class="text-gray-400 text-xs mt-2">Vifaa vya Ujenzi, Tuli, Vyuma</p>
+            </div>
+            <!-- Home Appliances -->
+            <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
+                <div class="text-4xl mb-3">🏠</div>
+                <h3 class="font-bold text-cyan-300">Home Appliances</h3>
+                <p class="text-gray-400 text-xs mt-2">Jokofu, Sufuria, Mashine za Nyumbani</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 2: Ecosystem & Business Models -->
+    <section class="w-full max-w-6xl mt-24">
+        <h2 class="text-3xl font-bold mb-2 text-center">Mfumo Mmoja. Biashara Kamili.</h2>
+        <p class="text-gray-400 text-center mb-10">Tofauti na maduka ya kawaida, PANDAS ni Trade OS.</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="glass rounded-2xl p-8">
+                <div class="text-3xl mb-4">🏷️</div>
+                <h3 class="text-xl font-bold mb-2 text-blue-300">B2B Wholesale Portal</h3>
+                <p class="text-gray-400 text-sm">Agiza kwa container au LCL. Pata bei za jumla moja kwa moja kutoka viwandani, MOQ calculator, na RFQ system.</p>
+            </div>
+            <div class="glass rounded-2xl p-8">
+                <div class="text-3xl mb-4">📦</div>
+                <h3 class="text-xl font-bold mb-2 text-purple-300">Dropshipping Platform</h3>
+                <p class="text-gray-400 text-sm">Uze bidhaa bila kuwa na stock. Order inaingia kwa PANDAS, supplier anafungasha, na anatuma moja kwa moja kwa mteja.</p>
+            </div>
+            <div class="glass rounded-2xl p-8">
+                <div class="text-3xl mb-4">🏭</div>
+                <h3 class="text-xl font-bold mb-2 text-emerald-300">Private Label & OEM</h3>
+                <p class="text-gray-400 text-sm">Unda brand yako. Pakia logo, chagua packaging, na viwanda vya China vitatengeneza bidhaa kwa jina lako.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 3: Logistics & Trust Engine -->
+    <section id="logistics" class="w-full max-w-6xl mt-24">
+        <div class="glass-light rounded-3xl p-8 md:p-12">
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+                <div>
+                    <h2 class="text-3xl font-bold mb-4">Logistics & Trust Engine</h2>
+                    <p class="text-gray-400 mb-6">Tatizo kubwa la biashara ya China-Afrika ni uaminifu. PANDAS imesuluhisha hilo. Tunasimamia Quality Inspection, Customs Clearance, na Live Shipment Tracking kuanzia Kiwandani mpaka kwenye Duka lako.</p>
+                    <div class="flex flex-wrap gap-4">
+                        <span class="glass px-4 py-2 rounded-full text-sm text-green-300">✓ Factory Audits</span>
+                        <span class="glass px-4 py-2 rounded-full text-sm text-green-300">✓ Quality Inspection</span>
+                        <span class="glass px-4 py-2 rounded-full text-sm text-blue-300">✓ Sea & Air Freight</span>
+                        <span class="glass px-4 py-2 rounded-full text-sm text-blue-300">✓ Customs Clearance</span>
+                    </div>
+                </div>
+                <div class="flex justify-center">
+                    <div class="glass w-full max-w-sm p-6 rounded-2xl">
+                        <h4 class="font-bold mb-4 flex items-center gap-2"><span>🚢</span> Track Shipment</h4>
+                        <div class="space-y-4 text-sm">
+                            <div class="flex justify-between"><span class="text-gray-400">Supplier Factory:</span> <span class="text-green-400">Packed ✓</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">China Warehouse:</span> <span class="text-green-400">Received ✓</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">Customs Shanghai:</span> <span class="text-yellow-400">Checking...</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">Dar es Salaam Port:</span> <span class="text-gray-500">Pending</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 4: Registration (Sajili Duka / Supplier) -->
+    <section id="register" class="w-full max-w-4xl mt-24 flex flex-col items-center text-center">
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4">Jiunge na Mfumo wa Biashara ya Kisasa</h2>
+        <p class="text-gray-400 mb-10 max-w-xl">Iwe unataka kufungua duka la mtandaoni, au wewe ni kiwanda cha China kinachotafuta masoko ya Afrika, PANDAS ndio jukwaa lako.</p>
+        
+        <div class="grid md:grid-cols-2 gap-6 w-full">
+            <!-- Vendor Registration -->
+            <div class="glass rounded-2xl p-8 flex flex-col items-center">
+                <div class="text-5xl mb-4">🛍️</div>
+                <h3 class="text-2xl font-bold mb-2">Sajili Duka Lako</h3>
+                <p class="text-gray-400 text-sm mb-6">Fungua storefront yako. Pata Dashboard, Inventory management, na uwezo wa kuuza duniani kote.</p>
+                <button class="tactile-btn bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3 px-8 rounded-xl w-full">
+                    Anza Kama Vendor
+                </button>
+            </div>
+            <!-- Supplier Registration -->
+            <div class="glass rounded-2xl p-8 flex flex-col items-center">
+                <div class="text-5xl mb-4">🏭</div>
+                <h3 class="text-2xl font-bold mb-2">Sajili Kiwanda chako</h3>
+                <p class="text-gray-400 text-sm mb-6">Kwa Viwanda vya China: Pakia catalog, ondoa wapatanishi, na ufikie maelfu ya wafanyabiashara wa Afrika moja kwa moja.</p>
+                <button class="tactile-btn bg-purple-700 hover:bg-purple-600 text-white font-bold py-3 px-8 rounded-xl w-full">
+                    Kuwa Supplier
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="w-full max-w-6xl mt-24 mb-8 glass-light rounded-2xl p-8 text-sm text-gray-400">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div>
+                <h4 class="text-white font-bold mb-4">PANDAS OS</h4>
+                <ul class="space-y-2">
+                    <li><a href="#" class="hover:text-white">About Us</a></li>
+                    <li><a href="#" class="hover:text-white">Vision & Mission</a></li>
+                    <li><a href="#" class="hover:text-white">Business Academy</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-bold mb-4">Biashara</h4>
+                <ul class="space-y-2">
+                    <li><a href="#" class="hover:text-white">Marketplace</a></li>
+                    <li><a href="#" class="hover:text-white">Wholesale B2B</a></li>
+                    <li><a href="#" class="hover:text-white">Dropshipping</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-bold mb-4">Huduma</h4>
+                <ul class="space-y-2">
+                    <li><a href="#" class="hover:text-white">China Sourcing</a></li>
+                    <li><a href="#" class="hover:text-white">Logistics</a></li>
+                    <li><a href="#" class="hover:text-white">Trade Finance</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-bold mb-4">Developer</h4>
+                <ul class="space-y-2">
+                    <li><a href="#" class="hover:text-white">API Platform</a></li>
+                    <li><a href="#" class="hover:text-white">Vendor API</a></li>
+                    <li><a href="#" class="hover:text-white">Shipping API</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="border-t border-white/10 mt-8 pt-4 text-center">
+            <p>&copy; 2026 PANDAS Global Logistics LLC. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // AI Personalization Simulation
+        document.addEventListener('DOMContentLoaded', () => {
+            const greetingElement = document.getElementById('ai-greeting');
+            const searchBtn = document.querySelector('.tactile-btn.bg-blue-600');
+            const searchInput = document.getElementById('ai-search');
+
+            searchBtn.addEventListener('click', () => {
+                if(searchInput.value.trim() === '') {
+                    greetingElement.textContent = "⚠️ Tafadhali andika unachohitaji kwanza...";
+                    greetingElement.parentElement.style.boxShadow = "0 0 20px rgba(239, 68, 68, 0.5)";
+                } else {
+                    greetingElement.textContent = "🤖 AI inatafuta wauzaji bora zaidi kwa: " + searchInput.value;
+                    greetingElement.parentElement.style.boxShadow = "0 0 40px rgba(16, 185, 129, 0.6)";
+                }
+            });
+        });
+    </script>
+</body>
+</html>
