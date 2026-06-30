@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PANDAS Global Logistics | Trade OS</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -35,231 +36,468 @@
         .glow-effect { animation: pulse-glow 4s infinite; }
         .category-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.4); }
         .category-card { transition: all 0.3s ease; }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.8); } }
+        .live-dot { animation: pulse-dot 2s infinite; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .slide-up { animation: slideUp 0.4s ease-out forwards; }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .shimmer { background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.08) 50%, transparent 75%); background-size: 200% 100%; animation: shimmer 2s infinite; }
+        .tracking-step-line { position: relative; }
+        .tracking-step-line::before { content: ''; position: absolute; left: 11px; top: 24px; bottom: -8px; width: 2px; background: rgba(255,255,255,0.1); }
+        .tracking-step-line:last-child::before { display: none; }
+        .tracking-step-line.active::before { background: linear-gradient(to bottom, #10b981, rgba(16,185,129,0.2)); }
+        .tracking-step-line.pending::before { background: rgba(255,255,255,0.06); }
+        .modal-overlay { transition: opacity 0.3s ease; }
+        .modal-content { transition: transform 0.3s ease, opacity 0.3s ease; }
+        .toast-enter { animation: slideUp 0.4s ease-out forwards; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
     </style>
 </head>
 <body class="aurora-bg text-white min-h-screen flex flex-col items-center p-4 sm:p-6">
 
-    <!-- Navbar -->
+    <!-- ============================================ -->
+    <!-- PANDAS OS NOTIFICATION TOAST -->
+    <!-- ============================================ -->
+    <div id="pandas-toast" class="fixed bottom-6 right-6 z-[100] max-w-sm transform translate-y-20 opacity-0 transition-all duration-500 pointer-events-none">
+        <div class="glass rounded-2xl p-4 border border-emerald-500/30 shadow-2xl shadow-black/60">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="zap" class="w-5 h-5 text-emerald-400"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold" id="toast-title">PANDAS OS</p>
+                    <p class="text-xs text-gray-400 mt-0.5" id="toast-msg">...</p>
+                </div>
+                <button onclick="hideToast()" class="text-gray-500 hover:text-white transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- TRACKING MODAL (AfterShip Live Data) -->
+    <!-- ============================================ -->
+    <div id="tracking-modal" class="fixed inset-0 z-[90] hidden">
+        <div class="modal-overlay absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeTrackingModal()"></div>
+        <div class="modal-content absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg max-h-[85vh] overflow-y-auto">
+            <div class="glass rounded-3xl p-6 sm:p-8 m-4">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 class="text-xl font-bold">📦 Live Tracking</h3>
+                        <p class="text-xs text-gray-400 mt-1">AfterShip Real-Time Data</p>
+                    </div>
+                    <button onclick="closeTrackingModal()" class="w-10 h-10 rounded-xl glass flex items-center justify-center hover:bg-white/10 transition">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- Tracking Input inside Modal -->
+                <div class="glass-light rounded-2xl p-4 mb-6">
+                    <label class="text-xs text-gray-400 block mb-2">Tracking Number</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="modal-tracking-input" placeholder="e.g. 1Z999AA10123456784" class="flex-1 bg-transparent border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:border-blue-500/50 transition font-mono">
+                        <button onclick="fetchTrackingFromAfterShip()" class="tactile-btn bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded-xl text-sm flex items-center gap-2">
+                            <i data-lucide="radar" class="w-4 h-4"></i>
+                            Track
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tracking Result -->
+                <div id="tracking-result" class="hidden">
+                    <!-- Status Header -->
+                    <div id="track-status-header" class="glass-light rounded-2xl p-5 mb-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="font-mono text-sm text-blue-400 font-bold" id="track-number">---</span>
+                            <span id="track-badge" class="px-3 py-1 bg-gray-500 text-white text-xs font-bold rounded-full">---</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <p class="text-gray-500 text-xs">Asili</p>
+                                <p class="font-semibold" id="track-origin">---</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 text-xs">Mahali</p>
+                                <p class="font-semibold" id="track-destination">---</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timeline -->
+                    <div id="track-timeline" class="space-y-0">
+                        <!-- Generated by JS -->
+                    </div>
+
+                    <!-- WhatsApp Notify Button -->
+                    <div class="mt-6 pt-4 border-t border-white/10">
+                        <p class="text-xs text-gray-400 mb-3">🔔 Pata arifa za WhatsApp wakati hali inabadilika:</p>
+                        <div class="flex gap-2">
+                            <input type="text" id="whatsapp-notify-phone" placeholder="+2557XXXXXXXX" class="flex-1 bg-transparent border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:border-green-500/50 transition font-mono">
+                            <button onclick="subscribeWhatsAppTracking()" class="tactile-btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-5 rounded-xl text-sm flex items-center gap-2">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                Jisajili
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="track-loading" class="hidden text-center py-12">
+                    <div class="w-12 h-12 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                    <p class="text-gray-400 text-sm">Inatafuta kupitia AfterShip...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="track-empty" class="text-center py-12">
+                    <div class="w-16 h-16 glass rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="package-search" class="w-8 h-8 text-gray-500"></i>
+                    </div>
+                    <p class="text-gray-400 text-sm">Ingiza tracking number ili kuona<br>mzigo wako kwa wakati halisi</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- NAVBAR -->
+    <!-- ============================================ -->
     <nav class="glass fixed top-4 left-1/2 transform -translate-x-1/2 w-full max-w-6xl rounded-full px-6 py-3 flex justify-between items-center z-50">
         <h1 class="text-xl font-bold tracking-tight">🐼 PANDAS</h1>
         <div class="hidden md:flex space-x-6 text-sm text-gray-300">
             <a href="#categories" class="hover:text-white transition">Maduka</a>
             <a href="#b2b" class="hover:text-white transition">Wholesale</a>
-            <a href="#logistics" class="hover:text-white transition">Logistics</a>
+            <a href="#logistics" class="hover:text-white transition flex items-center gap-1.5">
+                Logistics
+                <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full live-dot"></span>
+            </a>
+            <a href="#os-panel" class="hover:text-white transition">OS Panel</a>
             <a href="#register" class="hover:text-white transition">Sajili Duka</a>
         </div>
-        <button class="tactile-btn bg-white text-black text-sm font-bold py-2 px-4 rounded-full">Login</button>
+        <div class="flex items-center gap-3">
+            <button onclick="openTrackingModal()" class="hidden sm:flex items-center gap-2 glass-light text-sm px-4 py-2 rounded-full hover:bg-white/10 transition">
+                <i data-lucide="package-search" class="w-4 h-4 text-blue-400"></i>
+                <span>Track</span>
+            </button>
+            <button class="tactile-btn bg-white text-black text-sm font-bold py-2 px-4 rounded-full">Login</button>
+        </div>
     </nav>
 
-    <!-- Hero Section -->
+    <!-- ============================================ -->
+    <!-- HERO SECTION -->
+    <!-- ============================================ -->
     <header class="w-full max-w-5xl text-center mt-32 sm:mt-40 flex flex-col items-center">
         <div class="glass rounded-full px-4 py-2 mb-6 text-sm text-blue-300 flex items-center space-x-2 glow-effect">
             <span class="w-2 h-2 bg-blue-400 rounded-full animate-ping"></span>
-            <span id="ai-greeting">AI Trade Assistant: Online 24/7</span>
+            <span id="ai-greeting">PANDAS OS v2.0 — Enterprise Trade Infrastructure</span>
         </div>
         <h1 class="text-4xl sm:text-6xl md:text-7xl font-bold leading-tight mb-6 bg-gradient-to-r from-white to-gray-500 bg-clip-text text-transparent">
-            Biashara ya Kimataika, <br> <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Sio Duka Tu.</span>
+            Biashara ya Kimataifa, <br> <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Sio Duka Tu.</span>
         </h1>
         <p class="text-gray-400 text-base sm:text-xl max-w-2xl mb-10">
-            PANDAS Global Logistics ni Digital Trade Infrastructure inayounganisha Viwanda vya China, Wafanyabiashara wa Afrika, na Logistics kupitia AI na Supply Chain Automation.
+            PANDAS Global Logistics ni Digital Trade OS inayounganisha Viwanda vya China, Wafanyabiashara wa Afrika, na Logistics kupitia AI, WhatsApp Automation, na Supply Chain Real-Time Tracking.
         </p>
         <div class="glass rounded-2xl p-2 w-full max-w-2xl mb-10 flex flex-col sm:flex-row items-center gap-2">
             <input type="text" id="ai-search" placeholder="🤖 Mfano: Nahitaji power bank 20000mAh, MOQ 500..." class="bg-transparent flex-1 w-full px-4 py-3 text-white placeholder-gray-500 outline-none rounded-xl">
-            <button class="tactile-btn bg-blue-600 hover:bg-blue-500 w-full sm:w-auto text-white font-bold py-3 px-8 rounded-xl">Tafuta Supplier</button>
+            <button onclick="handleAISearch()" class="tactile-btn bg-blue-600 hover:bg-blue-500 w-full sm:w-auto text-white font-bold py-3 px-8 rounded-xl">Tafuta Supplier</button>
+        </div>
+
+        <!-- Live OS Status Bar -->
+        <div class="flex flex-wrap justify-center gap-4 text-xs text-gray-400">
+            <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-emerald-400 rounded-full live-dot"></span> AfterShip: Live</span>
+            <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-emerald-400 rounded-full live-dot"></span> WhatChimp: Connected</span>
+            <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-emerald-400 rounded-full live-dot"></span> n8n Engine: Running</span>
+            <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-yellow-400 rounded-full live-dot"></span> AI Sourcing: 12 requests/min</span>
         </div>
     </header>
 
+    <!-- ============================================ -->
     <!-- SECTION 1: Aina za Biashara -->
+    <!-- ============================================ -->
     <section id="categories" class="w-full max-w-6xl mt-24">
         <h2 class="text-3xl font-bold mb-2 text-center">Chagua Aina ya Biashara</h2>
         <p class="text-gray-400 text-center mb-10">Maduka rasmi ya PANDAS na Marketplace ya Wafanyabiashara mbalimbali.</p>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
-                <div class="text-4xl mb-3">💄</div><h3 class="font-bold text-pink-300">PANDAS Cosmetics</h3>
+                <div class="text-4xl mb-3">💄</div>
+                <h3 class="font-bold text-pink-300">PANDAS Cosmetics</h3>
                 <p class="text-gray-400 text-xs mt-2">Skincare, Makeup, Perfumes, Beauty Tools</p>
             </div>
             <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
-                <div class="text-4xl mb-3">📱</div><h3 class="font-bold text-blue-300">PANDAS Electronics</h3>
+                <div class="text-4xl mb-3">📱</div>
+                <h3 class="font-bold text-blue-300">PANDAS Electronics</h3>
                 <p class="text-gray-400 text-xs mt-2">Smartphones, Laptops, CCTV, Solar</p>
             </div>
             <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
-                <div class="text-4xl mb-3">🚗</div><h3 class="font-bold text-orange-300">Auto Parts</h3>
+                <div class="text-4xl mb-3">🚗</div>
+                <h3 class="font-bold text-orange-300">Auto Parts</h3>
                 <p class="text-gray-400 text-xs mt-2">Spares, Tires, Accessories, Engines</p>
             </div>
             <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
-                <div class="text-4xl mb-3">👗</div><h3 class="font-bold text-purple-300">Fashion</h3>
+                <div class="text-4xl mb-3">👗</div>
+                <h3 class="font-bold text-purple-300">Fashion</h3>
                 <p class="text-gray-400 text-xs mt-2">Nguo, Viatu, Vifaa vya Mode</p>
             </div>
             <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
-                <div class="text-4xl mb-3">🩺</div><h3 class="font-bold text-green-300">Medical Supplies</h3>
+                <div class="text-4xl mb-3">🩺</div>
+                <h3 class="font-bold text-green-300">Medical Supplies</h3>
                 <p class="text-gray-400 text-xs mt-2">Vifaa vya Hospitali, Dawa, PPE</p>
             </div>
             <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
-                <div class="text-4xl mb-3">🚜</div><h3 class="font-bold text-yellow-300">Agriculture</h3>
+                <div class="text-4xl mb-3">🚜</div>
+                <h3 class="font-bold text-yellow-300">Agriculture</h3>
                 <p class="text-gray-400 text-xs mt-2">Mbolea, Vifaa vya Shamba, Irrigation</p>
             </div>
             <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
-                <div class="text-4xl mb-3">🧱</div><h3 class="font-bold text-red-300">Construction</h3>
+                <div class="text-4xl mb-3">🧱</div>
+                <h3 class="font-bold text-red-300">Construction</h3>
                 <p class="text-gray-400 text-xs mt-2">Vifaa vya Ujenzi, Tuli, Vyuma</p>
             </div>
             <div class="glass category-card rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer">
-                <div class="text-4xl mb-3">🏠</div><h3 class="font-bold text-cyan-300">Home Appliances</h3>
+                <div class="text-4xl mb-3">🏠</div>
+                <h3 class="font-bold text-cyan-300">Home Appliances</h3>
                 <p class="text-gray-400 text-xs mt-2">Jokofu, Sufuria, Mashine za Nyumbani</p>
             </div>
         </div>
     </section>
 
-    <!-- SECTION 2: China Supplier Hub & Compliance -->
-    <section class="w-full max-w-6xl mt-24">
-        <h2 class="text-3xl font-bold mb-2 text-center">China Supplier Hub & Trust Engine</h2>
-        <p class="text-gray-400 text-center mb-10">Daraja la moja kwa moja na viwanda. Hakuna wapatanishi (Middlemen).</p>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="glass rounded-2xl p-8">
-                <h3 class="text-xl font-bold mb-4 text-blue-300">📋 Huduma za Sourcing & OEM</h3>
-                <ul class="space-y-3 text-gray-400 text-sm">
-                    <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Factory Verification & Audits</li>
-                    <li class="flex items-center gap-2"><span class="text-green-400">✓</span> OEM / ODM / White Label Manufacturing</li>
-                    <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Product Sampling & Price Negotiation</li>
-                    <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Packaging Design & Export Documentation</li>
-                </ul>
-            </div>
-            <div class="glass rounded-2xl p-8">
-                <h3 class="text-xl font-bold mb-4 text-purple-300">🛡️ Compliance Center (Vyeti)</h3>
-                <div class="grid grid-cols-3 gap-4 text-center">
-                    <div class="glass-light p-3 rounded-lg text-xs font-bold text-gray-300">MSDS</div>
-                    <div class="glass-light p-3 rounded-lg text-xs font-bold text-gray-300">CE</div>
-                    <div class="glass-light p-3 rounded-lg text-xs font-bold text-gray-300">FCC</div>
-                    <div class="glass-light p-3 rounded-lg text-xs font-bold text-gray-300">RoHS</div>
-                    <div class="glass-light p-3 rounded-lg text-xs font-bold text-gray-300">ISO</div>
-                    <div class="glass-light p-3 rounded-lg text-xs font-bold text-gray-300">FDA</div>
-                </div>
-                <p class="text-gray-400 text-sm mt-4">Pakua vyeti vyote vya usalama na ubora moja kwa moja kwenye dashboard yako.</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- SECTION 3: AI Everywhere (Digital Services) -->
-    <section class="w-full max-w-6xl mt-24">
-        <h2 class="text-3xl font-bold mb-2 text-center">AI Everywhere (Uwezo wa Dijitali)</h2>
-        <p class="text-gray-400 text-center mb-10">Akili mnemba inavyosimamia na kuongeza kasi ya biashara yako.</p>
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div class="glass p-6 rounded-2xl">
-                <div class="text-3xl mb-3">💡</div>
-                <h4 class="font-bold text-lg mb-1">AI Pricing Engine</h4>
-                <p class="text-gray-400 text-xs">AI inashauri bei bora ya kuuza, faida, na bei ya washindani.</p>
-            </div>
-            <div class="glass p-6 rounded-2xl">
-                <div class="text-3xl mb-3">🌍</div>
-                <h4 class="font-bold text-lg mb-1">AI Product Translator</h4>
-                <p class="text-gray-400 text-xs">Tafsiri moja kwa moja Kichina, Kiingereza, Kiswahili, Kiarabu na Kifaransa.</p>
-            </div>
-            <div class="glass p-6 rounded-2xl">
-                <div class="text-3xl mb-3">📊</div>
-                <h4 class="font-bold text-lg mb-1">AI Inventory Forecasting</h4>
-                <p class="text-gray-400 text-xs">Tabiri mwelekeo wa mauzo na onyo la stock kabla haijaisha.</p>
-            </div>
-            <div class="glass p-6 rounded-2xl">
-                <div class="text-3xl mb-3">🔍</div>
-                <h4 class="font-bold text-lg mb-1">Semantic & Image Search</h4>
-                <p class="text-gray-400 text-xs">Tafuta bidhaa kwa kupakia picha au kusema kwa sauti.</p>
-            </div>
-            <div class="glass p-6 rounded-2xl">
-                <div class="text-3xl mb-3">🛡️</div>
-                <h4 class="font-bold text-lg mb-1">AI Fraud Detection</h4>
-                <p class="text-gray-400 text-xs">Ulinzi wa hali ya juu dhidi ya malipo ya uwongo na udanganyifu.</p>
-            </div>
-            <div class="glass p-6 rounded-2xl">
-                <div class="text-3xl mb-3">🤖</div>
-                <h4 class="font-bold text-lg mb-1">24/7 AI Customer Support</h4>
-                <p class="text-gray-400 text-xs">Chatbot na WhatsApp bot kusaidia wateja muda wote.</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- SECTION 4: Trade Finance & Wallet -->
-    <section class="w-full max-w-6xl mt-24">
-        <div class="glass-light rounded-3xl p-8 md:p-12">
-            <h2 class="text-3xl font-bold mb-2 text-center">Trade Finance & Digital Wallet</h2>
-            <p class="text-gray-400 text-center mb-10">Pata mtaji na uwezo wa kifedha kwa ajili ya biashara yako.</p>
-            <div class="grid md:grid-cols-2 gap-8 items-center">
-                <div class="space-y-4">
-                    <div class="glass p-4 rounded-xl flex items-center gap-4">
-                        <span class="text-2xl">🕌</span>
-                        <div>
-                            <h4 class="font-bold">Islamic Murabaha Financing</h4>
-                            <p class="text-gray-400 text-xs">Pata ufadhili wa biashara kulingana na Sharia.</p>
-                        </div>
-                    </div>
-                    <div class="glass p-4 rounded-xl flex items-center gap-4">
-                        <span class="text-2xl">🧾</span>
-                        <div>
-                            <h4 class="font-bold">Invoice & PO Financing</h4>
-                            <p class="text-gray-400 text-xs">Tumia invoice zako kupata mkopo wa haraka.</p>
-                        </div>
-                    </div>
-                    <div class="glass p-4 rounded-xl flex items-center gap-4">
-                        <span class="text-2xl">⚖️</span>
-                        <div>
-                            <h4 class="font-bold">Escrow & BNPL for Business</h4>
-                            <p class="text-gray-400 text-xs">Lipia baadaye (Buy Now Pay Later) na Escrow kwa usalama.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="glass p-6 rounded-2xl">
-                    <h4 class="font-bold mb-4 text-lg">💳 Digital Wallet System</h4>
-                    <div class="space-y-3 text-sm">
-                        <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400">Vendor Wallet:</span> <span class="text-green-400">TSh 1,250,000</span></div>
-                        <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400">Buyer Wallet:</span> <span class="text-blue-400">TSh 850,000</span></div>
-                        <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400">Affiliate Wallet:</span> <span class="text-purple-400">TSh 120,000</span></div>
-                        <div class="flex justify-between"><span class="text-gray-400">Refund Wallet:</span> <span class="text-red-400">TSh 0</span></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- SECTION 5: Warehouse & Fulfillment -->
-    <section class="w-full max-w-6xl mt-24">
-        <h2 class="text-3xl font-bold mb-2 text-center">Warehouse & Fulfillment</h2>
-        <p class="text-gray-400 text-center mb-10">Mfumo wa kisasa wa kuhifadhia na kusambaza bidhaa.</p>
+    <!-- ============================================ -->
+    <!-- SECTION 2: Ecosystem & Business Models -->
+    <!-- ============================================ -->
+    <section id="b2b" class="w-full max-w-6xl mt-24">
+        <h2 class="text-3xl font-bold mb-2 text-center">Mfumo Mmoja. Biashara Kamili.</h2>
+        <p class="text-gray-400 text-center mb-10">Tofauti na maduka ya kawaida, PANDAS ni Trade OS.</p>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="glass rounded-2xl p-8 text-center">
-                <div class="text-4xl mb-4">📦</div>
-                <h4 class="font-bold text-xl mb-2">Smart Inventory</h4>
-                <p class="text-gray-400 text-sm">Ufuatiliaji wa stock kwa kutumia Barcode na QR Code. Alerts zinakuja zenyewe stock ikikaribia kuisha.</p>
+            <div class="glass rounded-2xl p-8">
+                <div class="text-3xl mb-4">🏷️</div>
+                <h3 class="text-xl font-bold mb-2 text-blue-300">B2B Wholesale Portal</h3>
+                <p class="text-gray-400 text-sm">Agiza kwa container au LCL. Pata bei za jumla moja kwa moja kutoka viwandani, MOQ calculator, na RFQ system.</p>
             </div>
-            <div class="glass rounded-2xl p-8 text-center">
-                <div class="text-4xl mb-4">🔄</div>
-                <h4 class="font-bold text-xl mb-2">Cross Docking</h4>
-                <p class="text-gray-400 text-sm">Kupokea mizigo moja kwa moja kutoka gari la kusafirisha na kuiweka kwenye gari la kusambaza bila kuhifadhi muda mrefu.</p>
+            <div class="glass rounded-2xl p-8">
+                <div class="text-3xl mb-4">📦</div>
+                <h3 class="text-xl font-bold mb-2 text-purple-300">Dropshipping Platform</h3>
+                <p class="text-gray-400 text-sm">Uze bidhaa bila kuwa na stock. Order inaingia kwa PANDAS, supplier anafungasha, na anatuma moja kwa moja kwa mteja.</p>
             </div>
-            <div class="glass rounded-2xl p-8 text-center">
-                <div class="text-4xl mb-4">🚚</div>
-                <h4 class="font-bold text-xl mb-2">Container Consolidation</h4>
-                <p class="text-gray-400 text-sm">Unganisha bidhaa kutoka wauzaji tofauti kwenye container moja ili kupunguza gharama za usafirishaji.</p>
+            <div class="glass rounded-2xl p-8">
+                <div class="text-3xl mb-4">🏭</div>
+                <h3 class="text-xl font-bold mb-2 text-emerald-300">Private Label & OEM</h3>
+                <p class="text-gray-400 text-sm">Unda brand yako. Pakia logo, chagua packaging, na viwanda vya China vitatengeneza bidhaa kwa jina lako.</p>
             </div>
         </div>
     </section>
 
-    <!-- SECTION 6: Community & API Platform -->
-    <section class="w-full max-w-6xl mt-24">
-        <div class="grid md:grid-cols-2 gap-6">
-            <div class="glass rounded-2xl p-8">
-                <div class="text-3xl mb-4">🎓</div>
-                <h3 class="text-2xl font-bold mb-2">Business Academy & Community</h3>
-                <p class="text-gray-400 text-sm mb-4">Jifunze biashara ya kimataifa. Tembea na jumuiya ya wafanyabiashara. Pata Supplier Reviews, Import Guides, na mafunzo ya kuhakiki viwanda.</p>
-                <button class="tactile-btn bg-yellow-500 text-black font-bold py-2 px-6 rounded-xl text-sm">Jifunze Bure</button>
-            </div>
-            <div class="glass rounded-2xl p-8">
-                <div class="text-3xl mb-4">⚙️</div>
-                <h3 class="text-2xl font-bold mb-2">API Platform (Headless)</h3>
-                <p class="text-gray-400 text-sm mb-4">Kwa Developers: Unganisha mfumo wa PANDAS na app zako. Tuna Vendor API, Supplier API, Shipping API, na Webhook Support.</p>
-                <button class="tactile-btn bg-cyan-500 text-white font-bold py-2 px-6 rounded-xl text-sm">Soma Docs za API</button>
+    <!-- ============================================ -->
+    <!-- SECTION 3: Logistics & Live Tracking Engine -->
+    <!-- ============================================ -->
+    <section id="logistics" class="w-full max-w-6xl mt-24">
+        <div class="glass-light rounded-3xl p-8 md:p-12">
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+                <div>
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="w-2 h-2 bg-emerald-400 rounded-full live-dot"></span>
+                        <span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Live — AfterShip + n8n</span>
+                    </div>
+                    <h2 class="text-3xl font-bold mb-4">Logistics & Trust Engine</h2>
+                    <p class="text-gray-400 mb-6">Tatizo kubwa la biashara ya China-Afrika ni uaminifu. PANDAS imesuluhisha hilo kupitia <strong class="text-white">Real-Time Tracking</strong> (AfterShip), <strong class="text-white">WhatsApp Alerts</strong> (WhatChimp), na <strong class="text-white">Automated Workflows</strong> (n8n).</p>
+                    <div class="flex flex-wrap gap-3 mb-6">
+                        <span class="glass px-3 py-1.5 rounded-full text-xs text-green-300">✓ Factory Audits</span>
+                        <span class="glass px-3 py-1.5 rounded-full text-xs text-green-300">✓ Quality Inspection</span>
+                        <span class="glass px-3 py-1.5 rounded-full text-xs text-blue-300">✓ Sea & Air Freight</span>
+                        <span class="glass px-3 py-1.5 rounded-full text-xs text-blue-300">✓ Customs Clearance</span>
+                        <span class="glass px-3 py-1.5 rounded-full text-xs text-purple-300">✓ WhatsApp Notifications</span>
+                        <span class="glass px-3 py-1.5 rounded-full text-xs text-purple-300">✓ n8n Automation</span>
+                    </div>
+                    <button onclick="openTrackingModal()" class="tactile-btn bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl text-sm flex items-center gap-2">
+                        <i data-lucide="radar" class="w-4 h-4"></i>
+                        Fungua Live Tracking
+                    </button>
+                </div>
+
+                <!-- Live Tracking Preview Card -->
+                <div class="flex justify-center">
+                    <div class="glass w-full max-w-sm p-6 rounded-2xl">
+                        <h4 class="font-bold mb-4 flex items-center gap-2 text-sm">
+                            <span>🚢</span> Track Shipment
+                            <span class="ml-auto flex items-center gap-1 text-xs text-emerald-400"><span class="w-1.5 h-1.5 bg-emerald-400 rounded-full live-dot"></span> Live</span>
+                        </h4>
+                        <div class="space-y-0 text-sm" id="hero-tracking-preview">
+                            <div class="tracking-step-line active flex gap-3 pb-4">
+                                <div class="w-6 h-6 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-white text-xs">Supplier Factory</p>
+                                    <p class="text-emerald-400 text-xs">Packed & Verified ✓</p>
+                                </div>
+                            </div>
+                            <div class="tracking-step-line active flex gap-3 pb-4">
+                                <div class="w-6 h-6 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-white text-xs">China Warehouse</p>
+                                    <p class="text-emerald-400 text-xs">Received ✓</p>
+                                </div>
+                            </div>
+                            <div class="tracking-step-line active flex gap-3 pb-4">
+                                <div class="w-6 h-6 rounded-full bg-yellow-500/20 border-2 border-yellow-500 flex items-center justify-center flex-shrink-0">
+                                    <div class="w-2 h-2 bg-yellow-400 rounded-full live-dot"></div>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-white text-xs">Customs Shanghai</p>
+                                    <p class="text-yellow-400 text-xs">Processing...</p>
+                                </div>
+                            </div>
+                            <div class="tracking-step-line pending flex gap-3 pb-4">
+                                <div class="w-6 h-6 rounded-full bg-white/5 border-2 border-white/20 flex items-center justify-center flex-shrink-0">
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-500 text-xs">Ocean Freight</p>
+                                    <p class="text-gray-600 text-xs">Pending</p>
+                                </div>
+                            </div>
+                            <div class="tracking-step-line pending flex gap-3">
+                                <div class="w-6 h-6 rounded-full bg-white/5 border-2 border-white/20 flex items-center justify-center flex-shrink-0">
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-500 text-xs">Dar es Salaam Port</p>
+                                    <p class="text-gray-600 text-xs">Pending</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-white/10">
+                            <p class="text-xs text-gray-500">Container: <span class="text-gray-300 font-mono">MSKU-2847193</span></p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- SECTION 7: Registration (Sajili Duka / Supplier) -->
+    <!-- ============================================ -->
+    <!-- SECTION 4: PANDAS OS Control Panel -->
+    <!-- ============================================ -->
+    <section id="os-panel" class="w-full max-w-6xl mt-24">
+        <div class="text-center mb-10">
+            <div class="inline-flex items-center gap-2 glass rounded-full px-4 py-2 mb-4 text-sm text-purple-300">
+                <i data-lucide="cpu" class="w-4 h-4"></i>
+                Enterprise-Grade Automation
+            </div>
+            <h2 class="text-3xl font-bold mb-2">PANDAS OS Panel</h2>
+            <p class="text-gray-400">Mifumo ya ndani inayoendesha biashara yako kiotomatiki.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- n8n Engine Card -->
+            <div class="glass rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
+                            <i data-lucide="workflow" class="w-5 h-5 text-orange-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm">n8n Event Engine</h3>
+                            <p class="text-xs text-gray-500">Core Orchestrator</p>
+                        </div>
+                    </div>
+                    <span class="flex items-center gap-1 text-xs text-emerald-400"><span class="w-1.5 h-1.5 bg-emerald-400 rounded-full live-dot"></span> Active</span>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between text-gray-400"><span>Workflows Active</span><span class="text-white font-mono">7</span></div>
+                    <div class="flex justify-between text-gray-400"><span>Events Processed (24h)</span><span class="text-white font-mono">1,247</span></div>
+                    <div class="flex justify-between text-gray-400"><span>Avg. Response</span><span class="text-white font-mono">0.3s</span></div>
+                    <div class="flex justify-between text-gray-400"><span>Failed</span><span class="text-red-400 font-mono">0</span></div>
+                </div>
+                <div class="mt-4 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full" style="width: 12%"></div>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">CPU: 12% | RAM: 340MB</p>
+            </div>
+
+            <!-- WhatChimp Card -->
+            <div class="glass rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                            <svg class="w-5 h-5 text-green-400" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm">WhatChimp</h3>
+                            <p class="text-xs text-gray-500">WhatsApp Command Center</p>
+                        </div>
+                    </div>
+                    <span class="flex items-center gap-1 text-xs text-emerald-400"><span class="w-1.5 h-1.5 bg-emerald-400 rounded-full live-dot"></span> Connected</span>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between text-gray-400"><span>Messages Sent (24h)</span><span class="text-white font-mono">3,891</span></div>
+                    <div class="flex justify-between text-gray-400"><span>Button Responses</span><span class="text-white font-mono">1,024</span></div>
+                    <div class="flex justify-between text-gray-400"><span>Delivery Rate</span><span class="text-emerald-400 font-mono">99.2%</span></div>
+                    <div class="flex justify-between text-gray-400"><span>Markup Fee</span><span class="text-emerald-400 font-mono">0%</span></div>
+                </div>
+                <div class="mt-4 p-2.5 rounded-lg bg-green-500/10 border border-green-500/20 text-xs text-green-300 flex items-center gap-2">
+                    <i data-lucide="check-circle" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                    <span>Last: "Kontena #1029 imefika bandarini" — 2 min ago</span>
+                </div>
+            </div>
+
+            <!-- AfterShip Card -->
+            <div class="glass rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                            <i data-lucide="map-pin" class="w-5 h-5 text-blue-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm">AfterShip Kernel</h3>
+                            <p class="text-xs text-gray-500">Live Tracking Engine</p>
+                        </div>
+                    </div>
+                    <span class="flex items-center gap-1 text-xs text-emerald-400"><span class="w-1.5 h-1.5 bg-emerald-400 rounded-full live-dot"></span> Polling</span>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between text-gray-400"><span>Active Trackings</span><span class="text-white font-mono">156</span></div>
+                    <div class="flex justify-between text-gray-400"><span>In Transit</span><span class="text-yellow-400 font-mono">42</span></div>
+                    <div class="flex justify-between text-gray-400"><span>Delivered</span><span class="text-emerald-400 font-mono">98</span></div>
+                    <div class="flex justify-between text-gray-400"><span>Poll Interval</span><span class="text-white font-mono">30s</span></div>
+                </div>
+                <div class="mt-4 h-1.5 bg-white/5 rounded-full overflow-hidden flex">
+                    <div class="h-full bg-emerald-500 rounded-l-full" style="width: 63%"></div>
+                    <div class="h-full bg-yellow-500" style="width: 27%"></div>
+                    <div class="h-full bg-red-500 rounded-r-full" style="width: 3%"></div>
+                </div>
+                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>✓ Delivered</span><span>⚠ Transit</span><span>✗ Exception</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Flow Diagram -->
+        <div class="glass rounded-2xl p-6 mt-4">
+            <h4 class="text-sm font-bold mb-4 flex items-center gap-2">
+                <i data-lucide="git-branch" class="w-4 h-4 text-purple-400"></i>
+                Mfumo wa Matukio — Real-Time Flow
+            </h4>
+            <div class="flex flex-wrap items-center justify-center gap-2 text-xs">
+                <div class="glass-light px-3 py-2 rounded-lg text-blue-300">🚢 Kontena Fika</div>
+                <i data-lucide="arrow-right" class="w-4 h-4 text-gray-500 hidden sm:block"></i>
+                <div class="glass-light px-3 py-2 rounded-lg text-orange-300">⚡ n8n Detects</div>
+                <i data-lucide="arrow-right" class="w-4 h-4 text-gray-500 hidden sm:block"></i>
+                <div class="glass-light px-3 py-2 rounded-lg text-green-300">💬 WhatsApp Alert</div>
+                <i data-lucide="arrow-right" class="w-4 h-4 text-gray-500 hidden sm:block"></i>
+                <div class="glass-light px-3 py-2 rounded-lg text-white">👤 Wakala Bofya "Ndio"</div>
+                <i data-lucide="arrow-right" class="w-4 h-4 text-gray-500 hidden sm:block"></i>
+                <div class="glass-light px-3 py-2 rounded-lg text-purple-300">🔧 Auto Process</div>
+                <i data-lucide="arrow-right" class="w-4 h-4 text-gray-500 hidden sm:block"></i>
+                <div class="glass-light px-3 py-2 rounded-lg text-emerald-300">✅ Complete</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SECTION 5: Registration -->
+    <!-- ============================================ -->
     <section id="register" class="w-full max-w-4xl mt-24 flex flex-col items-center text-center">
         <h2 class="text-3xl sm:text-4xl font-bold mb-4">Jiunge na Mfumo wa Biashara ya Kisasa</h2>
         <p class="text-gray-400 mb-10 max-w-xl">Iwe unataka kufungua duka la mtandaoni, au wewe ni kiwanda cha China kinachotafuta masoko ya Afrika, PANDAS ndio jukwaa lako.</p>
@@ -269,7 +507,7 @@
                 <div class="text-5xl mb-4">🛍️</div>
                 <h3 class="text-2xl font-bold mb-2">Sajili Duka Lako</h3>
                 <p class="text-gray-400 text-sm mb-6">Fungua storefront yako. Pata Dashboard, Inventory management, na uwezo wa kuuza duniani kote.</p>
-                <button class="tactile-btn bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3 px-8 rounded-xl w-full">
+                <button onclick="showToast('Vendor Registration', 'Mfumo wa usajili unakuja hivi karibuni. Wasiliana nasi kupitia WhatsApp.')" class="tactile-btn bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3 px-8 rounded-xl w-full">
                     Anza Kama Vendor
                 </button>
             </div>
@@ -277,14 +515,16 @@
                 <div class="text-5xl mb-4">🏭</div>
                 <h3 class="text-2xl font-bold mb-2">Sajili Kiwanda chako</h3>
                 <p class="text-gray-400 text-sm mb-6">Kwa Viwanda vya China: Pakia catalog, ondoa wapatanishi, na ufikie maelfu ya wafanyabiashara wa Afrika moja kwa moja.</p>
-                <button class="tactile-btn bg-purple-700 hover:bg-purple-600 text-white font-bold py-3 px-8 rounded-xl w-full">
+                <button onclick="showToast('Supplier Registration', 'Mfumo wa usajili unakuja hivi karibuni. Wasiliana nasi kupitia WhatsApp.')" class="tactile-btn bg-purple-700 hover:bg-purple-600 text-white font-bold py-3 px-8 rounded-xl w-full">
                     Kuwa Supplier
                 </button>
             </div>
         </div>
     </section>
 
-    <!-- Footer -->
+    <!-- ============================================ -->
+    <!-- FOOTER -->
+    <!-- ============================================ -->
     <footer class="w-full max-w-6xl mt-24 mb-8 glass-light rounded-2xl p-8 text-sm text-gray-400">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div>
@@ -315,32 +555,364 @@
                 <h4 class="text-white font-bold mb-4">Developer</h4>
                 <ul class="space-y-2">
                     <li><a href="#" class="hover:text-white">API Platform</a></li>
-                    <li><a href="#" class="hover:text-white">Vendor API</a></li>
-                    <li><a href="#" class="hover:text-white">Shipping API</a></li>
+                    <li><a href="#" class="hover:text-white">AfterShip Tracking API</a></li>
+                    <li><a href="#" class="hover:text-white">WhatChimp WhatsApp API</a></li>
                 </ul>
             </div>
         </div>
-        <div class="border-t border-white/10 mt-8 pt-4 text-center">
+        <div class="border-t border-white/10 mt-8 pt-4 flex flex-col sm:flex-row justify-between items-center gap-2">
             <p>&copy; 2026 PANDAS Global Logistics LLC. All Rights Reserved.</p>
+            <p class="text-xs text-gray-500">Powered by n8n • WhatChimp • AfterShip</p>
         </div>
     </footer>
 
+    <!-- ============================================ -->
+    <!-- JAVASCRIPT — PANDAS OS Frontend Engine -->
+    <!-- ============================================ -->
     <script>
-        // AI Personalization Simulation
-        document.addEventListener('DOMContentLoaded', () => {
-            const greetingElement = document.getElementById('ai-greeting');
-            const searchBtn = document.querySelector('.tactile-btn.bg-blue-600');
-            const searchInput = document.getElementById('ai-search');
+        // ==========================================
+        // CONFIGURATION — Badilisha hapa kwa seva yako
+        // ==========================================
+        const PANDAS_CONFIG = {
+            // URL ya backend yako ya Flask (app.py)
+            // Kwa local: "http://localhost:5000/api"
+            // Kwa production: "https://api.pandas.global/api"
+            API_BASE: "http://localhost:5000/api",
+            
+            // AfterShip API Key (kwa direct calls kutoka frontend - hakikisha CORS imewezeshwa)
+            // Au tumia backend proxy kwa usalama
+            AFTERSHIP_KEY: "your_aftership_api_key",
+            AFTERSHIP_BASE: "https://api.aftership.com/v4",
+            
+            // n8n Webhook URL
+            N8N_WEBHOOK: "http://localhost:5678/webhook/pandas-event"
+        };
 
-            searchBtn.addEventListener('click', () => {
-                if(searchInput.value.trim() === '') {
-                    greetingElement.textContent = "⚠️ Tafadhali andika unachohitaji kwanza...";
-                    greetingElement.parentElement.style.boxShadow = "0 0 20px rgba(239, 68, 68, 0.5)";
-                } else {
-                    greetingElement.textContent = "🤖 AI inatafuta wauzaji bora zaidi kwa: " + searchInput.value;
-                    greetingElement.parentElement.style.boxShadow = "0 0 40px rgba(16, 185, 129, 0.6)";
-                }
+        // ==========================================
+        // TOAST NOTIFICATIONS
+        // ==========================================
+        function showToast(title, message, duration = 5000) {
+            const toast = document.getElementById('pandas-toast');
+            document.getElementById('toast-title').textContent = title;
+            document.getElementById('toast-msg').textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            toast.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
+            
+            setTimeout(() => hideToast(), duration);
+        }
+
+        function hideToast() {
+            const toast = document.getElementById('pandas-toast');
+            toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            toast.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
+        }
+
+        // ==========================================
+        // AI SEARCH HANDLER
+        // ==========================================
+        function handleAISearch() {
+            const input = document.getElementById('ai-search');
+            const greeting = document.getElementById('ai-greeting');
+            const query = input.value.trim();
+            
+            if (!query) {
+                greeting.textContent = "⚠️ Tafadhali andika unachohitaji kwanza...";
+                greeting.parentElement.style.boxShadow = "0 0 20px rgba(239, 68, 68, 0.5)";
+                return;
+            }
+
+            greeting.textContent = "🤖 AI inatafuta wauzaji bora zaidi kwa: " + query;
+            greeting.parentElement.style.boxShadow = "0 0 40px rgba(16, 185, 129, 0.6)";
+
+            // Rusha kwenda n8n kwa processing
+            fetch(PANDAS_CONFIG.N8N_WEBHOOK, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    event_type: "AI_SUPPLIER_SEARCH",
+                    query: query,
+                    timestamp: new Date().toISOString()
+                })
+            }).catch(() => {
+                // n8n haijapatikana — demo mode
+                console.log("[PANDAS OS] n8n haipatikani, demo mode");
             });
+
+            showToast("AI Sourcing", `Inatafuta: "${query}". Matokeo yatatumwa kwa WhatsApp.`);
+        }
+
+        // ==========================================
+        // TRACKING MODAL
+        // ==========================================
+        function openTrackingModal() {
+            const modal = document.getElementById('tracking-modal');
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            
+            // Reset states
+            document.getElementById('tracking-result').classList.add('hidden');
+            document.getElementById('track-loading').classList.add('hidden');
+            document.getElementById('track-empty').classList.remove('hidden');
+            
+            lucide.createIcons();
+        }
+
+        function closeTrackingModal() {
+            document.getElementById('tracking-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // Close on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeTrackingModal();
+        });
+
+        // ==========================================
+        // AFTERSHIP TRACKING — Main Function
+        // ==========================================
+        async function fetchTrackingFromAfterShip() {
+            const trackingNo = document.getElementById('modal-tracking-input').value.trim();
+            
+            if (!trackingNo) {
+                showToast("Hitilafu", "Ingiza tracking number.");
+                return;
+            }
+
+            // Show loading
+            document.getElementById('track-empty').classList.add('hidden');
+            document.getElementById('tracking-result').classList.add('hidden');
+            document.getElementById('track-loading').classList.remove('hidden');
+
+            let trackingData = null;
+
+            // === NJIA 1: Kupitia PANDAS OS Backend (PREFERED) ===
+            try {
+                const response = await fetch(`${PANDAS_CONFIG.API_BASE}/tracking/${encodeURIComponent(trackingNo)}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    trackingData = data.tracking;
+                }
+            } catch (e) {
+                console.log("[PANDAS OS] Backend haipatikani, kujaribu AfterShip moja kwa moja...");
+            }
+
+            // === NJIA 2: Direct AfterShip API (kama backend haipo) ===
+            if (!trackingData && PANDAS_CONFIG.AFTERSHIP_KEY !== "your_aftership_api_key") {
+                try {
+                    const response = await fetch(`${PANDAS_CONFIG.AFTERSHIP_BASE}/trackings/${trackingNo}`, {
+                        headers: {
+                            "aftership-api-key": PANDAS_CONFIG.AFTERSHIP_KEY,
+                            "Content-Type": "application/json"
+                        }
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        trackingData = data.data?.tracking;
+                    }
+                } catch (e) {
+                    console.log("[PANDAS OS] AfterShip direct call failed:", e);
+                }
+            }
+
+            // === NJIA 3: Demo Data (kama hakuna API) ===
+            if (!trackingData) {
+                trackingData = getDemoTrackingData(trackingNo);
+            }
+
+            // Render
+            document.getElementById('track-loading').classList.add('hidden');
+            document.getElementById('tracking-result').classList.remove('hidden');
+            renderTrackingResult(trackingData);
+        }
+
+        function renderTrackingResult(tracking) {
+            const checkpoints = tracking.checkpoints || [];
+            const status = tracking.tag || tracking.status || 'pending';
+            const trackingNo = tracking.tracking_number || 'N/A';
+
+            // Status badge
+            const statusConfig = {
+                'pending': { label: 'Inasubiri', bg: 'bg-gray-500' },
+                'intransit': { label: 'Inasafiri', bg: 'bg-yellow-500' },
+                'in_transit': { label: 'Inasafiri', bg: 'bg-yellow-500' },
+                'outfordelivery': { label: 'Inapelekwa', bg: 'bg-blue-500' },
+                'delivered': { label: 'Imefika!', bg: 'bg-emerald-500' },
+                'expired': { label: 'Imeexpire', bg: 'bg-red-500' },
+                'exception': { label: 'Tatizo', bg: 'bg-red-600' },
+                'inforeceived': { label: 'Taarifa', bg: 'bg-purple-500' },
+                'pickedup': { label: 'Imechukuliwa', bg: 'bg-indigo-500' }
+            };
+            
+            const sc = statusConfig[status] || statusConfig['pending'];
+
+            document.getElementById('track-number').textContent = trackingNo;
+            document.getElementById('track-badge').textContent = sc.label;
+            document.getElementById('track-badge').className = `px-3 py-1 ${sc.bg} text-white text-xs font-bold rounded-full`;
+            document.getElementById('track-origin').textContent = tracking.origin?.country || 'China';
+            document.getElementById('track-destination').textContent = tracking.destination?.country || 'Tanzania';
+
+            // Timeline
+            const timeline = document.getElementById('track-timeline');
+            
+            if (checkpoints.length === 0) {
+                timeline.innerHTML = `
+                    <div class="text-center py-8 text-gray-500 text-sm">
+                        Hakuna checkpoints zilizopatikana bado.
+                    </div>`;
+                return;
+            }
+
+            timeline.innerHTML = checkpoints.map((cp, i) => {
+                const isActive = i === 0;
+                const time = cp.created_at ? new Date(cp.created_at).toLocaleString('sw-TZ', {
+                    day: 'numeric', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                }) : '--';
+                const location = cp.location || '';
+                const locStr = typeof location === 'object' ? [location.city, location.country].filter(Boolean).join(', ') : location;
+
+                return `
+                    <div class="tracking-step-line ${isActive ? 'active' : 'pending'} flex gap-3 pb-5 slide-up" style="animation-delay: ${i * 80}ms">
+                        <div class="w-6 h-6 rounded-full ${isActive ? 'bg-emerald-500/20 border-2 border-emerald-500' : 'bg-white/5 border-2 border-white/20'} flex items-center justify-center flex-shrink-0">
+                            ${isActive ? '<svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : ''}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="${isActive ? 'text-white font-medium' : 'text-gray-400'} text-sm">${cp.message || 'Hakuna taarifa'}</p>
+                            <p class="text-xs text-gray-500 mt-0.5">${time}${locStr ? ' • ' + locStr : ''}</p>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        // ==========================================
+        // WHATCHIMP — Subscribe WhatsApp Alerts
+        // ==========================================
+        async function subscribeWhatsAppTracking() {
+            const phone = document.getElementById('whatsapp-notify-phone').value.trim();
+            const trackingNo = document.getElementById('modal-tracking-input').value.trim();
+
+            if (!phone) {
+                showToast("Hitilafu", "Ingiza namba yako ya WhatsApp.");
+                return;
+            }
+            if (!phone.startsWith('+')) {
+                showToast("Hitilafu", "Namba lazima ianze na + (mfano: +2557XXXXXXXX)");
+                return;
+            }
+
+            // Rusha kwenda PANDAS OS backend
+            try {
+                const response = await fetch(`${PANDAS_CONFIG.API_BASE}/subscribe-tracking-alert`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        phone: phone,
+                        tracking_no: trackingNo,
+                        event_type: "SUBSCRIBE_WHATSAPP_ALERT"
+                    })
+                });
+
+                if (response.ok) {
+                    showToast("✅ Imefanikiwa!", `Utapata arifa za WhatsApp kwa ${phone} wakati ${trackingNo} inabadilika.`);
+                } else {
+                    throw new Error("Backend error");
+                }
+            } catch (e) {
+                // Fallback: Rusha kwenda n8n moja kwa moja
+                try {
+                    await fetch(PANDAS_CONFIG.N8N_WEBHOOK, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            event_type: "SUBSCRIBE_WHATSAPP_ALERT",
+                            phone: phone,
+                            tracking_no: trackingNo
+                        })
+                    });
+                    showToast("✅ Ombi Imetumwa!", `Utapata arifa kwa ${phone}. (Kupitia n8n)`);
+                } catch (e2) {
+                    showToast("Demo Mode", `Kama backend ilikuwa active, ungepata arifa za WhatsApp kwa ${phone} kwa tracking ${trackingNo}.`);
+                }
+            }
+        }
+
+        // ==========================================
+        // DEMO DATA — Wakati hakuna API
+        // ==========================================
+        function getDemoTrackingData(trackingNo) {
+            const now = new Date();
+            const h = (hours) => new Date(now.getTime() - hours * 3600000).toISOString();
+            
+            return {
+                tracking_number: trackingNo,
+                tag: 'in_transit',
+                status: 'in_transit',
+                origin: { country: 'China' },
+                destination: { country: 'Tanzania' },
+                expected_delivery: new Date(now.getTime() + 12 * 86400000).toISOString(),
+                checkpoints: [
+                    { message: "Package departed from facility in Shanghai", location: "Shanghai, China", created_at: h(6) },
+                    { message: "Package arrived at transit facility", location: "Shanghai, China", created_at: h(18) },
+                    { message: "Customs clearance processing", location: "Shanghai Customs, China", created_at: h(36) },
+                    { message: "Package picked up by carrier", location: "Guangzhou, China", created_at: h(72) },
+                    { message: "Shipment information received", location: "Guangzhou, China", created_at: h(120) },
+                    { message: "Order confirmed by PANDAS Global Logistics", location: "Dar es Salaam, Tanzania", created_at: h(168) }
+                ]
+            };
+        }
+
+        // ==========================================
+        // ENTER KEY SUPPORT
+        // ==========================================
+        document.getElementById('modal-tracking-input')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') fetchTrackingFromAfterShip();
+        });
+
+        document.getElementById('ai-search')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleAISearch();
+        });
+
+        // ==========================================
+        // SSE — Real-Time Updates kutoka Backend
+        // ==========================================
+        function connectPandasSSE() {
+            // Hii inafanya kazi tu kama PANDAS OS backend ina-run
+            try {
+                const es = new EventSource(`${PANDAS_CONFIG.API_BASE}/stream/tracking-updates`);
+                
+                es.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'status_change') {
+                        showToast('📦 Mzigo Umebadilika!', `${data.tracking_no}: ${data.new_status}`);
+                    }
+                    
+                    if (data.type === 'clearance_alert') {
+                        showToast('🚢 Arifa ya Bandari!', `Kontena ${data.container_no} imefika ${data.port}`);
+                    }
+                };
+                
+                es.onerror = function() {
+                    console.log("[PANDAS OS] SSE haipatikani — Backend haijaanzishwa");
+                    es.close();
+                };
+            } catch (e) {
+                // SSE haipatikani — frontend inafanya kazi peke yake
+            }
+        }
+
+        // ==========================================
+        // INIT
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            connectPandasSSE();
+            
+            console.log("═══════════════════════════════════════");
+            console.log("  🐼 PANDAS OS — Frontend Engine v2.0");
+            console.log("  Backend: " + PANDAS_CONFIG.API_BASE);
+            console.log("  n8n: " + PANDAS_CONFIG.N8N_WEBHOOK);
+            console.log("═══════════════════════════════════════");
         });
     </script>
 </body>
